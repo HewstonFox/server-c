@@ -1,0 +1,3 @@
+[submodule "deps/dict-c"]
+	path = deps/dict-c
+	url = git@github.com:HewstonFox/dict-c.git
