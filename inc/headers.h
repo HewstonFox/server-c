@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ctype.h>
-#include <libmx.h>
 #include <string.h>
 
 #define HEADERS_MAX_LEN 100
