@@ -21,7 +21,7 @@ $(NAME): $(OBJECTS)
 	ar -rcsT $(NAME).a $(DEPS_BIN) $^
 
 obj/%.o: src/%.c
-	$(CC) $(CFLAGS) $(DEPS_INC) -Iinc -o $@ -c $< $(DEPS_BIN)
+	$(CC) $(CFLAGS) $(DEPS_INC) -Iinc -o $@ -c $< $(DEPS_BIN) $(CLIBS)
 
 $(DEPS_PATHS):
 	$(MAKE) -C $@

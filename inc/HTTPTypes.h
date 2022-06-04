@@ -1,3 +1,7 @@
+//
+// Created by Hewston on 6/4/2022.
+//
+
 #pragma once
 
 #define RESPONSE_TEMPLATE "HTTP/1.1 %s\r\n%s\r\n\r\n%s"
