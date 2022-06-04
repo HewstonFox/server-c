@@ -1,30 +1,29 @@
-rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
-OS := $(shell uname)
 CC=clang
-CFLAGS=-std=c11 -Wall -Wextra -Werror -Wpedantic -g
-
-CLIBS=-pthread -lcurl
-
-ifneq ($(OS),Darwin)
-CLIBS+=`pkg-config --libs --cflags openssl` 
-endif
-
+CFLAGS=-std=c11 -Wall -Wextra -Werror -Wpedantic -Wno-error=unused-command-line-argument -g
+CLIBS=-pthread
 NAME=serverc
 
-.OBJECTS=$(call rwildcard,src,*.c)
+.OBJECTS = $(wildcard src/*.c)
+OBJECTS = $(.OBJECTS:src%.c=obj%.o)
 
-FW_PATHS=$(wildcard ./deps/*)
-foreachfw=$(foreach fw, $(FW_PATHS), $(wildcard $(fw)$1))
+DEPS_PATHS=$(wildcard ./deps/*)
+foreachdep=$(foreach dep, $(DEPS_PATHS), $(wildcard $(dep)$1))
 
-FW_INC=$(addprefix "-I" ,$(call foreachfw,/inc*/))
-FW_BIN=$(call foreachfw,/*.a)
+DEPS_INC=$(addprefix "-I" ,$(call foreachdep,/inc*/))
+DEPS_BIN=$(call foreachdep,/*.a)
 
-all: $(FW_PATHS) $(NAME)
+all: prepare $(DEPS_PATHS) $(NAME)
 
-$(NAME): $(FW_BIN) $(.OBJECTS)
-	$(CC) $(CFLAGS) $(CLIBS) $(FW_INC) -Iinc -o $(NAME) $(.OBJECTS) $(FW_BIN) $(CDEFINES)
+prepare:
+	mkdir -p obj/
 
-$(FW_PATHS):
+$(NAME): $(OBJECTS)
+	ar -rcsT $(NAME).a $(DEPS_BIN) $^
+
+obj/%.o: src/%.c
+	$(CC) $(CFLAGS) $(DEPS_INC) -Iinc -o $@ -c $< $(DEPS_BIN)
+
+$(DEPS_PATHS):
 	$(MAKE) -C $@
 
 clean:
@@ -33,8 +32,6 @@ clean:
 uninstall: clean
 	rm -f $(NAME)
 
-reinstall:
-	rm -f $(NAME)
-	$(MAKE) $(NAME)
+reinstall: uninstall all
 
-.PHONY: $(FW_PATHS)
+.PHONY: $(DEPS_PATHS)
