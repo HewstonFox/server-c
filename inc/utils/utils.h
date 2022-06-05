@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/time.h>
 
 #if __linux__
 
@@ -111,3 +112,5 @@ void *sc_memmem(const void *big, size_t big_len, const void *little,
 void *sc_memmove(void *dst, const void *src, size_t len);
 
 void *sc_realloc(void *ptr, size_t size);
+
+long sc_get_current_time();

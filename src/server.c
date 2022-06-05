@@ -16,6 +16,8 @@ struct Server_s {
     void *ctx;
 
     Hooks hooks;
+
+    char stamp[21];
 };
 
 struct AcceptContext_s {
@@ -25,8 +27,65 @@ struct AcceptContext_s {
 
 typedef struct AcceptContext_s *AcceptContext;
 
-static void *server_accept(AcceptContext ctx) {
 
+static void server_normalize(Server s);
+
+
+static Dict running_servers = NULL;
+static pthread_mutex_t running_servers_mutex;
+
+static void register_server(Server s) {
+    pthread_mutex_lock(&running_servers_mutex);
+    if (running_servers == NULL) running_servers = dict_create();
+    dict_set(running_servers, s->stamp, (void *) s);
+    pthread_mutex_unlock(&running_servers_mutex);
+}
+
+static void unregister_server(const char *key) {
+    pthread_mutex_lock(&running_servers_mutex);
+    if (key != NULL && running_servers != NULL) dict_remove(running_servers, key, NULL);
+    pthread_mutex_unlock(&running_servers_mutex);
+}
+
+static size_t count_servers() {
+    pthread_mutex_lock(&running_servers_mutex);
+    size_t count = running_servers != NULL ? dict_count_entries(running_servers) : 0;
+    if (count == 0 && running_servers != NULL) dict_destroy(running_servers, NULL);
+    pthread_mutex_unlock(&running_servers_mutex);
+    return count;
+}
+
+static void server_force_stop(Server s) {
+    pthread_cancel(s->thread);
+    close(s->socket);
+    server_normalize(s);
+}
+
+static void abort_handler(int s) {
+    if (s == SIGINT)
+        printf("\n\nKeyboard interrupt...\n");
+    if (s == SIGTERM)
+        printf("\n\nTermination request...\n");
+
+    printf("Stopping all servers...\n\n");
+    pthread_mutex_lock(&running_servers_mutex);
+    if (running_servers != NULL) {
+        DictIterator di = dict_iterator_create(running_servers);
+        while (dict_iterator_next(di)) {
+            server_force_stop((Server) di->value);
+            printf("Server '%s' stopped.\n", di->key);
+        }
+        dict_iterator_destroy(di);
+        dict_destroy(running_servers, NULL);
+        running_servers = NULL;
+    }
+    pthread_mutex_unlock(&running_servers_mutex);
+    printf("All servers stopped.\n\n");
+}
+
+
+static void *server_accept(AcceptContext ctx) {
+    printf("accepted\n");
     free(ctx);
     return NULL;
 }
@@ -86,10 +145,12 @@ static void server_normalize(Server s) {
 }
 
 
-Server create_server(void *ctx) {
+Server server_create(void *ctx) {
     Server s = (Server) malloc(sizeof(struct Server_s));
 
     server_normalize(s);
+
+    sprintf(s->stamp, "%ld", sc_get_current_time());
 
     s->hooks = create_hooks();
     s->ctx = ctx;
@@ -101,86 +162,123 @@ Server create_server(void *ctx) {
     return s;
 }
 
-void destroy_server(Server s) {
+void server_destroy(Server s) {
+    if (s == NULL) return;
+
     server_stop(s);
     destroy_hooks(s->hooks);
     free(s);
 }
 
 Server server_set_context(Server s, void *ctx) {
+    if (s == NULL) return NULL;
+
     s->ctx = ctx;
     return s;
 }
 
+int server_get_port(Server s) {
+    return s->port;
+}
+
+const char *server_get_stamp(Server s) {
+    return s->stamp;
+}
+
 Server server_set_request_timeout(Server s, struct timeval timeout) {
+    if (s == NULL) return NULL;
+
     s->req_timeout = timeout;
     return s;
 }
 
 Server server_set_response_timeout(Server s, struct timeval timeout) {
+    if (s == NULL) return NULL;
+
     s->res_timeout = timeout;
     return s;
 }
 
 Server server_clear_hooks(Server s) {
+    if (s == NULL) return NULL;
+
     destroy_hooks(s->hooks);
     s->hooks = create_hooks();
     return s;
 }
 
-int server_listen(Server s, int port, void (*cb)(Server), bool detach) {
+Server server_listen(Server s, int port, void *(*cb)(Server), bool detach) {
+    if (s == NULL) return NULL;
+
     s->socket = socket(PF_INET, SOCK_STREAM, 0);
     if (s->socket <= 0) {
         perror("Failed to connect socket...\n");
-        return 1;
+        return NULL;
     }
     int reuse = 1;
     if (setsockopt(s->socket, SOL_SOCKET, SO_REUSEADDR, (const char *) &reuse, sizeof(reuse)) < 0) {
         perror("Failed to reuse address...\n");
-        return 1;
+        return NULL;
     }
     if (setsockopt(s->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &s->req_timeout, sizeof(s->req_timeout)) < 0) {
         perror("Failed to set request timeout...\n");
-        return 1;
+        return NULL;
     }
     if (setsockopt(s->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *) &s->res_timeout, sizeof(s->res_timeout)) < 0) {
         perror("Failed to set send timeout...\n");
-        return 1;
+        return NULL;
     }
     int alive = 1;
     if (setsockopt(s->socket, SOL_SOCKET, SO_KEEPALIVE, (const char *) &alive, sizeof(alive))) {
         perror("Failed to set keep alive...\n");
-        return 1;
+        return NULL;
     }
-
     s->port = port;
     s->address.sin_port = htons(s->port);
     if (bind(s->socket, (struct sockaddr *) &s->address, sizeof(s->address)) < 0) {
         perror("Failed to bind socket...\n");
-        return 1;
+        return NULL;
     }
     if (listen(s->socket, SOMAXCONN) < 0) {
         perror("Failed to start listening...\n");
-        return 1;
+        return NULL;
     }
+
     signal(SIGPIPE, SIG_IGN);
 
+    signal(SIGINT, abort_handler);
+    signal(SIGTERM, abort_handler);
+
     s->is_running = true;
+    register_server(s);
+
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     pthread_t cb_thread;
-    pthread_create(&cb_thread, NULL, (void *(*)(void *)) cb, (void *) s);
+    pthread_create(&cb_thread, &attr, (void *(*)(void *)) cb, (void *) s);
 
     if (detach)
-        pthread_create(&s->thread, NULL, (void *(*)(void *)) server_listen_cb, (void *) s);
+        pthread_create(&s->thread, &attr, (void *(*)(void *)) server_listen_cb, (void *) s);
     else
         server_listen_cb(s);
 
-    return 0;
+    pthread_attr_destroy(&attr);
+
+    return s;
 }
 
 int server_stop(Server s) {
     pthread_cancel(s->thread);
     close(s->socket);
     server_normalize(s);
+    unregister_server(s->stamp);
     return 0;
+}
+
+void wait_for_servers_stop() {
+    struct timespec t = {0, 100000000};
+    while (count_servers() != 0)
+        nanosleep(&t, &t);
 }

@@ -456,3 +456,8 @@ void *sc_realloc(void *ptr, size_t size) {
     return new_ptr;
 }
 
+long sc_get_current_time() {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return (long) (t.tv_sec * 1000000 + t.tv_usec);
+}

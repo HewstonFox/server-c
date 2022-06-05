@@ -19,9 +19,9 @@
 typedef struct Server_s *Server;
 
 
-Server create_server(void *ctx);
+Server server_create(void *ctx);
 
-void destroy_server(Server s);
+void server_destroy(Server s);
 
 
 Server server_set_context(Server s, void *ctx);
@@ -32,6 +32,15 @@ Server server_set_response_timeout(Server s, struct timeval timeout);
 
 Server server_clear_hooks(Server s);
 
-int server_listen(Server s, int port, void (*cb)(Server), bool detach);
+
+int server_get_port(Server s);
+
+const char *server_get_stamp(Server s);
+
+
+Server server_listen(Server s, int port, void *(*cb)(Server), bool detach);
+
 
 int server_stop(Server s);
+
+void wait_for_servers_stop();
