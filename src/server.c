@@ -12,6 +12,12 @@ struct Server_s {
     struct timeval req_timeout;
     struct timeval res_timeout;
 
+    ssize_t (*writer)(const void *buf, size_t n, AcceptContext ctx);
+
+    ssize_t (*reader)(void *buff, size_t n, AcceptContext ctx);
+
+    void (*acceptor)(AcceptContext ctx);
+
     int port;
     void *ctx;
 
@@ -19,13 +25,6 @@ struct Server_s {
 
     char stamp[21];
 };
-
-struct AcceptContext_s {
-    Server server;
-    int socket;
-};
-
-typedef struct AcceptContext_s *AcceptContext;
 
 
 static void server_normalize(Server s);
@@ -127,6 +126,7 @@ errno == EAGAIN
         AcceptContext ctx = (AcceptContext) malloc(sizeof(struct AcceptContext_s));
         ctx->server = s;
         ctx->socket = new_client;
+        ctx->data = NULL;
         pthread_t response_thread;
         pthread_create(&response_thread, NULL, (void *(*)(void *)) server_accept, (void *) ctx);
     }

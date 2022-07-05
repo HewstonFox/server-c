@@ -18,6 +18,13 @@
 
 typedef struct Server_s *Server;
 
+struct AcceptContext_s {
+    Server server;
+    int socket;
+    void *data;
+};
+
+typedef struct AcceptContext_s *AcceptContext;
 
 Server server_create(void *ctx);
 
