@@ -137,7 +137,7 @@ errno == EAGAIN
 static void server_normalize(Server s) {
     s->is_running = false;
     s->socket = 0;
-    s->thread = PTHREAD_INHERIT_SCHED;
+    s->thread = 0;
     s->port = 0;
     s->address.sin_family = PF_INET;
     s->address.sin_addr.s_addr = INADDR_ANY;

@@ -26,9 +26,9 @@ int sc_atoi(const char *str) {
         }
     }
     if (is_minus == 1) {
-        return -res;
+        return (int) -res;
     }
-    return res;
+    return (int) res;
 }
 
 char *sc_itoa(int number) {
@@ -53,7 +53,7 @@ char *sc_itoa(int number) {
     }
     num_str[length--] = '\0';
     while (number != 0) {
-        num_str[length--] = (number % 10) + '0';
+        num_str[length--] = (char) ((number % 10) + '0');
         number /= 10;
     }
     return num_str;
@@ -73,18 +73,18 @@ bool sc_isspace(int c) { return (c >= '\t' && c <= '\r') || c == ' '; }
 
 char sc_tolower(int c) {
     if (sc_isupper(c))
-        return c + 32;
-    return c;
+        return (char) (c + 32);
+    return (char) c;
 }
 
 char sc_toupper(int c) {
     if (sc_islower(c))
-        return c - 32;
-    return c;
+        return (char) (c - 32);
+    return (char) c;
 }
 
-int sc_strlen(const char *s) {
-    int count = 0;
+ssize_t sc_strlen(const char *s) {
+    ssize_t count = 0;
     while (s[count])
         count++;
     return count;
@@ -109,8 +109,8 @@ char *sc_strdup(const char *s1) {
     return dup;
 }
 
-char *sc_strndup(const char *s1, size_t n) {
-    size_t len = (size_t) sc_strlen(s1);
+char *sc_strndup(const char *s1, ssize_t n) {
+    ssize_t len = sc_strlen(s1);
     if (n < len)
         len = n;
     char *dup = sc_strnew(len);
@@ -118,8 +118,8 @@ char *sc_strndup(const char *s1, size_t n) {
     return dup;
 }
 
-char *sc_strncpy(char *dst, const char *src, int len) {
-    int i = 0;
+char *sc_strncpy(char *dst, const char *src, ssize_t len) {
+    ssize_t i = 0;
     while (src[i] && i != len) {
         dst[i] = src[i];
         i++;
@@ -149,7 +149,7 @@ bool sc_streq(const char *s1, const char *s2) { return !sc_strcmp(s1, s2); }
 
 bool sc_streqi(const char *s1, const char *s2) { return !sc_strcmpi(s1, s2); }
 
-int sc_strncmp(const char *s1, const char *s2, int n) {
+int sc_strncmp(const char *s1, const char *s2, ssize_t n) {
     while (n--) {
         if (*s1 != *s2)
             return *(const unsigned char *) s1 - *(const unsigned char *) s2;
@@ -175,7 +175,7 @@ char *sc_strchr(const char *s, int c) {
 }
 
 char *sc_strstr(const char *haystack, const char *needle) {
-    int len = sc_strlen(needle);
+    ssize_t len = sc_strlen(needle);
     while (*haystack) {
         if (!sc_strncmp(haystack, needle, len))
             return (char *) haystack;
@@ -184,11 +184,11 @@ char *sc_strstr(const char *haystack, const char *needle) {
     return NULL;
 }
 
-char *sc_strnew(const int size) {
+char *sc_strnew(ssize_t size) {
     char *str = (char *) malloc((size + 1) * sizeof(char));
     if (str == NULL)
         return NULL;
-    for (int i = 0; i <= size; ++i)
+    for (ssize_t i = 0; i <= size; ++i)
         str[i] = '\0';
     return str;
 }
@@ -198,7 +198,7 @@ char *sc_strtrim(const char *str) {
         return NULL;
     while (sc_isspace(*str))
         str++;
-    int len = sc_strlen(str);
+    ssize_t len = sc_strlen(str);
     while (sc_isspace(str[len - 1]))
         len--;
     return sc_strndup(str, len);
@@ -285,21 +285,21 @@ char **sc_strsplit(const char *s, char c, int splits_count, bool skip_empty) {
     return words;
 }
 
-int sc_get_char_index(const char *str, char c) {
+ssize_t sc_get_char_index(const char *str, char c) {
     if (!str || !*str)
         return -2;
-    int len = sc_strlen(str);
-    for (int i = 0; i < len; i++)
+    size_t len = sc_strlen(str);
+    for (size_t i = 0; i < len; i++)
         if (str[i] == c)
-            return i;
+            return (ssize_t) i;
     return -1;
 }
 
 char **sc_strdivide(const char *s, char c) {
-    int divider = sc_get_char_index(s, c);
+    ssize_t divider = sc_get_char_index(s, c);
     char **res = (char **) (malloc(sizeof(char *) * 3));
     res[2] = NULL;
-    if (divider == -1) {
+    if (divider == -1l) {
         res[0] = sc_strdup(s);
         res[1] = sc_strdup("");
     } else {
@@ -342,13 +342,13 @@ char *sc_del_extra_spaces(const char *str) {
     return result;
 }
 
-int sc_get_substr_index(const char *str, const char *sub) {
+ssize_t sc_get_substr_index(const char *str, const char *sub) {
     if (!str || !*str || !sub || !*sub)
         return -2;
     char *res_point = sc_strstr(str, sub);
     if (!res_point)
         return -1;
-    return res_point - str;
+    return (int) (res_point - str);
 }
 
 char *sc_replace_substr(const char *str, const char *sub, const char *replace) {
@@ -361,10 +361,10 @@ char *sc_replace_substr(const char *str, const char *sub, const char *replace) {
         return NULL;
     if (!sub || !replace)
         return sc_strdup(str);
-    int len_rep = sc_strlen(sub);
+    size_t len_rep = sc_strlen(sub);
     if (len_rep == 0)
         return sc_strdup(str);
-    int len_with = sc_strlen(replace);
+    size_t len_with = sc_strlen(replace);
     ins = (char *) str;
     for (count = 0; (tmp = sc_strstr(ins, sub)); ++count)
         ins = tmp + len_rep;
@@ -374,7 +374,7 @@ char *sc_replace_substr(const char *str, const char *sub, const char *replace) {
         return NULL;
     while (count--) {
         ins = sc_strstr(str, sub);
-        len_front = ins - str;
+        len_front = (int) (ins - str);
         tmp = sc_strncpy(tmp, str, len_front) + len_front;
         tmp = sc_strcpy(tmp, replace) + len_with;
         str += len_front + len_rep;
@@ -421,7 +421,7 @@ void *sc_memchr(const void *s, int c, size_t n) {
 }
 
 void *sc_memrchr(const void *s, int c, size_t n) {
-    for (int i = n - 1; i >= 0; i--)
+    for (size_t i = n - 1; i >= 0; i--)
         if (((unsigned char *) s)[i] == c) return (unsigned char *) s + i;
     return NULL;
 }

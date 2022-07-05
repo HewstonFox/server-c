@@ -41,15 +41,15 @@ char sc_tolower(int c);
 
 // STRINGS
 
-int sc_strlen(const char *s);
+ssize_t sc_strlen(const char *s);
 
 void sc_strdel(char **str);
 
-int sc_get_char_index(const char *str, char c);
+ssize_t sc_get_char_index(const char *str, char c);
 
 char *sc_strdup(const char *s1);
 
-char *sc_strndup(const char *s1, size_t n);
+char *sc_strndup(const char *s1, ssize_t n);
 
 char *sc_strcpy(char *dst, const char *src);
 
@@ -57,13 +57,13 @@ bool sc_streq(const char *s1, const char *s2);
 
 bool sc_streqi(const char *s1, const char *s2);
 
-char *sc_strncpy(char *dst, const char *src, int len);
+char *sc_strncpy(char *dst, const char *src, ssize_t len);
 
 int sc_strcmp(const char *s1, const char *s2);
 
 int sc_strcmpi(const char *s1, const char *s2);
 
-int sc_strncmp(const char *s1, const char *s2, int n);
+int sc_strncmp(const char *s1, const char *s2, ssize_t n);
 
 char *sc_strcat(char *restricts1, const char *restricts2);
 
@@ -71,9 +71,9 @@ char *sc_strchr(const char *s, int c);
 
 char *sc_strstr(const char *haystack, const char *needle);
 
-int sc_get_substr_index(const char *str, const char *sub);
+ssize_t sc_get_substr_index(const char *str, const char *sub);
 
-char *sc_strnew(int size);
+char *sc_strnew(ssize_t size);
 
 char *sc_strtrim(const char *str);
 
