@@ -12,11 +12,10 @@ struct Server_s {
     struct timeval req_timeout;
     struct timeval res_timeout;
 
-    ssize_t (*writer)(const void *buf, size_t n, AcceptContext ctx);
-
-    ssize_t (*reader)(void *buff, size_t n, AcceptContext ctx);
-
-    void (*acceptor)(AcceptContext ctx);
+    RequestWriter writer;
+    RequestReader reader;
+    RequestAcceptor acceptor;
+    RequestCleaner cleaner;
 
     int port;
     void *ctx;
@@ -84,7 +83,13 @@ static void abort_handler(int s) {
 
 
 static void *server_accept(AcceptContext ctx) {
+    if (ctx->server->acceptor)
+        ctx->server->acceptor(ctx);
+
     printf("accepted\n");
+
+    if (ctx->server->cleaner)
+        ctx->server->cleaner(ctx);
     free(ctx);
     return NULL;
 }
@@ -158,6 +163,10 @@ Server server_create(void *ctx) {
     s->req_timeout.tv_usec = 0;
     s->res_timeout.tv_sec = 0;
     s->res_timeout.tv_usec = 0;
+    s->writer = sc_default_writer;
+    s->reader = sc_default_reader;
+    s->acceptor = NULL;
+    s->cleaner = NULL;
 
     return s;
 }
@@ -196,6 +205,26 @@ Server server_set_response_timeout(Server s, struct timeval timeout) {
     if (s == NULL) return NULL;
 
     s->res_timeout = timeout;
+    return s;
+}
+
+Server server_set_acceptor(Server s, RequestAcceptor acceptor) {
+    s->acceptor = acceptor;
+    return s;
+}
+
+Server server_set_cleaner(Server s, RequestCleaner cleaner) {
+    s->cleaner = cleaner;
+    return s;
+}
+
+Server server_set_reader(Server s, RequestReader reader) {
+    s->reader = reader;
+    return s;
+}
+
+Server server_set_writer(Server s, RequestWriter writer) {
+    s->writer = writer;
     return s;
 }
 

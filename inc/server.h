@@ -13,18 +13,10 @@
 #include <pthread.h>
 #include <errno.h>
 #include "../deps/dict-c/inc/dict.h"
+#include "defaults.h"
 #include "hooks.h"
 #include "utils/utils.h"
 
-typedef struct Server_s *Server;
-
-struct AcceptContext_s {
-    Server server;
-    int socket;
-    void *data;
-};
-
-typedef struct AcceptContext_s *AcceptContext;
 
 Server server_create(void *ctx);
 
@@ -36,6 +28,14 @@ Server server_set_context(Server s, void *ctx);
 Server server_set_request_timeout(Server s, struct timeval timeout);
 
 Server server_set_response_timeout(Server s, struct timeval timeout);
+
+Server server_set_acceptor(Server s, RequestAcceptor acceptor);
+
+Server server_set_cleaner(Server s, RequestCleaner cleaner);
+
+Server server_set_reader(Server s, RequestReader reader);
+
+Server server_set_writer(Server s, RequestWriter writer);
 
 Server server_clear_hooks(Server s);
 
