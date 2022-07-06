@@ -63,7 +63,7 @@ int sc_strcmp(const char *s1, const char *s2);
 
 int sc_strcmpi(const char *s1, const char *s2);
 
-int sc_strncmp(const char *s1, const char *s2, ssize_t n);
+int sc_strncmp(const char *s1, const char *s2, size_t n);
 
 char *sc_strcat(char *restricts1, const char *restricts2);
 

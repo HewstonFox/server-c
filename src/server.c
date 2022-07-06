@@ -81,10 +81,70 @@ static void abort_handler(int s) {
     printf("All servers stopped.\n\n");
 }
 
+static char *read_until(char *str, AcceptContext ctx) {
+    size_t str_len = sc_strlen(str);
+    size_t cap = 30;
+    char *buffer = calloc(cap, sizeof(char));
+    size_t actual_size = 0;
+    actual_size += ctx->server->reader(buffer, str_len, ctx);
+    if (actual_size < str_len) {
+        free(buffer);
+        return NULL;
+    }
+    while (sc_strncmp(buffer + actual_size - str_len, str, str_len) != 0) {
+        ssize_t read_count = ctx->server->reader(buffer + actual_size, 1, ctx);
+        if (read_count <= 0)
+            break;
+        actual_size += read_count;
+        if (actual_size == cap) {
+            cap *= 2;
+            buffer = sc_realloc(buffer, cap);
+        }
+    }
+    buffer[actual_size] = 0;
+    buffer = sc_realloc(buffer, actual_size);
+    return buffer;
+}
+
+static Request request_create() {
+    Request req = malloc(sizeof(struct Request_s));
+    req->raw_hat = NULL;
+    req->raw_route = NULL;
+    req->raw_query = NULL;
+    req->raw_headers = NULL;
+    req->raw_body = NULL;
+
+    req->version = NULL;
+    req->path = NULL;
+
+    req->body_len = 0;
+
+    req->params = dict_create();
+    req->query = dict_create();
+    req->headers = dict_create();
+
+    return req;
+}
+
+static Response response_create() {
+    Response res = malloc(sizeof(struct Response_s));
+
+    res->headers = dict_create();
+    res->body = NULL;
+    res->body_len = 0;
+
+    return res;
+}
 
 static void *server_accept(AcceptContext ctx) {
     if (ctx->server->acceptor)
         ctx->server->acceptor(ctx);
+
+    ctx->req = request_create();
+    ctx->res = response_create();
+
+    ctx->req->raw_hat = read_until("\r\n", ctx);
+    ctx->req->raw_headers = read_until("\r\n\r\n", ctx);
 
     printf("accepted\n");
 
@@ -132,6 +192,8 @@ errno == EAGAIN
         ctx->server = s;
         ctx->socket = new_client;
         ctx->data = NULL;
+        ctx->req = NULL;
+        ctx->res = NULL;
         pthread_t response_thread;
         pthread_create(&response_thread, NULL, (void *(*)(void *)) server_accept, (void *) ctx);
     }

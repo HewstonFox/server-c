@@ -12,7 +12,6 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <errno.h>
-#include "../deps/dict-c/inc/dict.h"
 #include "defaults.h"
 #include "hooks.h"
 #include "utils/utils.h"

@@ -149,7 +149,7 @@ bool sc_streq(const char *s1, const char *s2) { return !sc_strcmp(s1, s2); }
 
 bool sc_streqi(const char *s1, const char *s2) { return !sc_strcmpi(s1, s2); }
 
-int sc_strncmp(const char *s1, const char *s2, ssize_t n) {
+int sc_strncmp(const char *s1, const char *s2, size_t n) {
     while (n--) {
         if (*s1 != *s2)
             return *(const unsigned char *) s1 - *(const unsigned char *) s2;
